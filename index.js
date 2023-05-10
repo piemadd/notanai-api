@@ -97,7 +97,7 @@ wss.on('connection', (ws) => {
           client.channels.cache.get(messageChannel).threads.create({
             name: `Message from ${ws.uuid}`,
             message: parsedMessage.content.slice(0, 1000),
-            autoArchiveDuration: 300,
+            autoArchiveDuration: 60,
           })
             .then((thread) => {
               ws.threadChannelID = thread.id;

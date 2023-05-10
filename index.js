@@ -88,7 +88,7 @@ wss.on('connection', (ws) => {
         }
 
         let result = profanity(parsedMessage.content.slice(0, 1000));
-        while (result) {
+        while (false) {
           console.log('Profanity detected')
           console.log(result)
           parsedMessage.content = parsedMessage.content.replace(result.detectedWord, '*'.repeat(result.detectedWord.length));

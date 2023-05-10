@@ -7,10 +7,8 @@ const { profanity } = require("super-profanity");
 
 require('dotenv').config();
 
-const messageChannel = '1105693423303933993';
+const messageChannel = '1105988689026367518';
 let messageChannelObject = null;
-
-let lastMessageID = 0;
 
 const wss = new WebSocketServer.Server({ port: 3001 });
 const client = new discord.Client({
@@ -33,21 +31,25 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', (message) => {
-  if (message.channelId !== messageChannel) return;
   if (message.author.id === client.user.id) return;
-  if (!message.reference?.channelId) return;
-
-  const respondedTo = message.channel.messages.cache.get(message.reference.messageId);
-  if (!respondedTo) return;
-  if (respondedTo.author.id !== client.user.id) return;
 
   wss.clients.forEach((ws) => {
-    if (ws.lastMessageID === respondedTo.id) {
+    if (ws.threadChannelID === message.channel.id) {
       console.log('sending response to client')
-      ws.send(JSON.stringify({
-        'type': 'message',
-        'data': message.content,
-      }));
+
+      if (message.content.length > 0) {
+        ws.send(JSON.stringify({
+          'type': 'message',
+          'data': message.content,
+        }));
+      }
+
+      Array.from(message.attachments.values()).forEach((attachment) => {        
+        ws.send(JSON.stringify({
+          'type': 'attachment',
+          'data': attachment.url,
+        }));
+      });
     }
   });
 });
@@ -55,12 +57,15 @@ client.on('messageCreate', (message) => {
 //message handling
 wss.on('connection', (ws) => {
   ws.uuid = uuidv4();
-  ws.lastMessageID = null;
-  ws.lastResponseID = null;
+  ws.threadChannelID = null;
 
   console.log('Client connected');
   ws.on('error', console.error);
-  ws.on('close', () => console.log('Client disconnected'));
+  ws.on('close', () => {
+    console.log('Client disconnected')
+    const thread = client.channels.cache.get(ws.threadChannelID)
+    if (thread) thread.delete();
+  });
 
   ws.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
@@ -87,19 +92,19 @@ wss.on('connection', (ws) => {
           return;
         }
 
-        let result = profanity(parsedMessage.content.slice(0, 1000));
-        while (false) {
-          console.log('Profanity detected')
-          console.log(result)
-          parsedMessage.content = parsedMessage.content.replace(result.detectedWord, '*'.repeat(result.detectedWord.length));
-          result = profanity(parsedMessage.content);
+        if (!ws.threadChannelID) {
+          console.log('No thread channel ID')
+          client.channels.cache.get(messageChannel).threads.create({
+            name: `Message from ${ws.uuid}`,
+            message: parsedMessage.content.slice(0, 1000),
+          })
+            .then((thread) => {
+              ws.threadChannelID = thread.id;
+            })
+        } else {
+          console.log('Thread channel ID exists')
+          client.channels.cache.get(ws.threadChannelID).send(parsedMessage.content.slice(0, 1000))
         }
-
-        console.log('no profanity')
-
-        client.channels.cache.get(messageChannel).send(`From UUID ${ws.uuid}: \`${parsedMessage.content}\``).then((newMessage) => {
-          ws.lastMessageID = newMessage.id;
-        })
       })
   });
 });

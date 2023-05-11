@@ -44,7 +44,7 @@ client.on('messageCreate', (message) => {
         }));
       }
 
-      Array.from(message.attachments.values()).forEach((attachment) => {        
+      Array.from(message.attachments.values()).forEach((attachment) => {
         ws.send(JSON.stringify({
           'type': 'attachment',
           'data': attachment.url,
@@ -56,8 +56,23 @@ client.on('messageCreate', (message) => {
 
 //message handling
 wss.on('connection', (ws, req) => {
-  ws.uuid = uuidv4();
-  ws.threadChannelID = null;
+
+  if (req.headers['uuid']) {
+    ws.uuid = req.headers['uuid'];
+
+    client.channels.cache.get(messageChannel).threads.fetchArchived().then((threads) => {
+      threads.forEach((thread) => {
+        if (thread.name.includes(ws.uuid)) {
+          ws.threadChannelID = thread.id;
+
+          client.channels.cache.get(ws.threadChannelID).send('Client reconnected')
+        }
+      })
+    })
+  } else {
+    ws.uuid = uuidv4();
+    ws.threadChannelID = null;
+  }
 
   console.log('Client connected');
   ws.on('error', console.error);

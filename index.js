@@ -72,6 +72,11 @@ wss.on('connection', (ws, req) => {
   } else {
     ws.uuid = uuidv4();
     ws.threadChannelID = null;
+
+    ws.send(JSON.stringify({
+      type: 'uuid',
+      data: ws.uuid,
+    }));
   }
 
   console.log('Client connected');

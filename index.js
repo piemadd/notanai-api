@@ -10,7 +10,8 @@ require('dotenv').config();
 const messageChannel = '1105988689026367518';
 let messageChannelObject = null;
 
-const wss = new WebSocketServer.Server({ port: 3001 });
+const app = express();
+const wss = new WebSocketServer.Server({ noServer: true });
 const client = new discord.Client({
   intents: [
     discord.GatewayIntentBits.Guilds,
@@ -23,7 +24,7 @@ const client = new discord.Client({
 });
 
 wss.on('listening', () => {
-  console.log('Listening on port 3001')
+  console.log('Websocket Server listening on port 3001')
 })
 
 client.on('ready', () => {
@@ -44,7 +45,7 @@ client.on('messageCreate', (message) => {
         }));
       }
 
-      Array.from(message.attachments.values()).forEach((attachment) => {        
+      Array.from(message.attachments.values()).forEach((attachment) => {
         ws.send(JSON.stringify({
           'type': 'attachment',
           'data': attachment.url,
@@ -116,6 +117,28 @@ wss.on('connection', (ws) => {
 
 wss.on('close', () => {
   clearInterval(interval);
+});
+
+app.get('/', (req, res) => {
+  res.send('hewwo :3')
+});
+
+app.get('/meta', (req, res) => {
+  res.send({
+    ip: req.ip,
+    ips: req.ips,
+    header: req.headers,
+  })
+})
+
+const server = app.listen(3001, () => {
+  console.log('Express listening on port 3001')
+})
+
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, socket => {
+    wss.emit('connection', socket, request);
+  });
 });
 
 client.login(process.env.DISCORD_TOKEN);

@@ -65,6 +65,10 @@ wss.on('connection', (ws) => {
     console.log('Client disconnected')
     const thread = client.channels.cache.get(ws.threadChannelID)
     //if (thread) thread.delete();
+    if (thread) {
+      thread.send('Thread closed by user');
+      thread.setArchived(true);
+    }
   });
 
   ws.on('message', async (message) => {

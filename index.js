@@ -55,7 +55,7 @@ client.on('messageCreate', (message) => {
 });
 
 //message handling
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   ws.uuid = uuidv4();
   ws.threadChannelID = null;
 
@@ -105,6 +105,8 @@ wss.on('connection', (ws) => {
           })
             .then((thread) => {
               ws.threadChannelID = thread.id;
+
+              thread.send(`Client info: \n\t- IP: ${req.headers['cf-connecting-ip']}\n\t- User Agent: ${req.headers['user-agent']}\n\t- UUID: ${ws.uuid}\n\t- Country of Origin: ${req.headers['cf-ipcountry']}`)
             })
         } else {
           console.log('Thread channel ID exists')

@@ -88,6 +88,8 @@ wss.on('connection', (ws, req) => {
       if (thread) {
         ws.threadChannelID = thread.id;
         ws.uuid = parsedMessage.data;
+        console.log(`Thread found, sending message to ${thread.id}`)
+        thread.send('Client reconnected to thread')
       } else {
         client.channels.cache.get(messageChannel).threads.create({
           name: `Message from ${ws.uuid}`,

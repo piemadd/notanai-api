@@ -93,15 +93,9 @@ wss.on('connection', (ws, req) => {
         thread.send('Client reconnected to thread')
         thread.setArchived(false);
       } else {
-        client.channels.cache.get(messageChannel).threads.create({
-          name: `Message from ${ws.uuid}`,
-          message: 'Thread created for non existent UUID',
-          autoArchiveDuration: 60,
-        })
-
         ws.send(JSON.stringify({
           type: 'error',
-          data: 'Thread not found, fuck it we ball tho'
+          data: 'Thread not found, sowwy uwu'
         }))
       }
     } else {

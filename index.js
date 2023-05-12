@@ -72,7 +72,7 @@ wss.on('connection', (ws, req) => {
     //if (thread) thread.delete();
     if (thread) {
       thread.send('Thread closed by user');
-      thread.setArchived(true);
+      //thread.setArchived(true);
     }
   });
 

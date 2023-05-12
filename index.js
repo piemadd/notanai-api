@@ -78,7 +78,7 @@ wss.on('connection', (ws, req) => {
 
   ws.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
-    console.log(`Received message => ${parsedMessage.content}`)
+    console.log(`Received message => ${parsedMessage}`)
 
     if (parsedMessage.type && parsedMessage.type === 'uuid') {
       //given uuid, look for thread with uuid in name

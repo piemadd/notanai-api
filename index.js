@@ -84,14 +84,13 @@ wss.on('connection', (ws, req) => {
     if (parsedMessage.type && parsedMessage.type === 'uuid') {
       console.log('attempting a reconnnection to thread')
       //given uuid, look for thread with uuid in name
-      //const regularThreads = await client.channels.cache.get(messageChannel).threads.fetchActive();
+      const regularThreads = await client.channels.cache.get(messageChannel).threads.fetchActive();
       const archivedThreads = await client.channels.cache.get(messageChannel).threads.fetchArchived();
-      //const threads = [...Array.from(regularThreads.threads), ...Array.from(archivedThreads.threads)];
 
-      const thread = await archivedThreads.threads.find((thread) => {
-        console.log(thread.name)
-        return thread.name?.includes(parsedMessage.data)
-      });
+      const regularThread = await archivedThreads.threads.find((thread) => thread.name?.includes(parsedMessage.data));
+      const archivedThread = await regularThreads.threads.find((thread) => thread.name?.includes(parsedMessage.data));
+
+      const thread = archivedThread ?? regularThread;
 
       if (thread) {
         ws.threadChannelID = thread.id;

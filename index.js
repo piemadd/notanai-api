@@ -67,7 +67,7 @@ wss.on('connection', (ws, req) => {
   console.log('Client connected');
   ws.on('error', console.error);
   ws.on('close', () => {
-    console.log('\n--\n**Client disconnected**\n--\n')
+    console.log('----------------**Client disconnected**----------------')
     const thread = client.channels.cache.get(ws.threadChannelID)
     //if (thread) thread.delete();
     if (thread) {
@@ -90,7 +90,7 @@ wss.on('connection', (ws, req) => {
         ws.threadChannelID = thread.id;
         ws.uuid = parsedMessage.data;
         console.log(`Thread found, sending message to ${thread.id}`)
-        thread.send('\n--\n**Client reconnected to thread**\n--\n')
+        thread.send('----------------**Client reconnected to thread**----------------')
         thread.setArchived(false);
       } else {
         ws.send(JSON.stringify({

@@ -88,7 +88,10 @@ wss.on('connection', (ws, req) => {
       const archivedThreads = await client.channels.cache.get(messageChannel).threads.fetchArchived();
       const threads = regularThreads.concat(archivedThreads);
 
-      const thread = await threads.find((thread) => thread.name.includes(parsedMessage.data));
+      const thread = await threads.find((thread) => {
+        console.log(thread.name)
+        return thread.name.includes(parsedMessage.data)
+      });
 
       if (thread) {
         ws.threadChannelID = thread.id;

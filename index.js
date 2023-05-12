@@ -78,13 +78,11 @@ wss.on('connection', (ws, req) => {
 
   ws.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
-    console.log(`Received message => ${parsedMessage}`)
+    console.log(`Received message => ${message}`)
 
     if (parsedMessage.type && parsedMessage.type === 'uuid') {
       //given uuid, look for thread with uuid in name
       const thread = await client.channels.cache.get(messageChannel).threads.cache.find((thread) => thread.name.includes(parsedMessage.data));
-
-      console.log(thread)
 
       if (thread) {
         ws.threadChannelID = thread.id;

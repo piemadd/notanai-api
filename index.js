@@ -89,8 +89,8 @@ wss.on('connection', (ws, req) => {
       const threads = [...Array.from(regularThreads.threads), ...Array.from(archivedThreads.threads)];
 
       const thread = await threads.find((thread) => {
-        console.log(thread)
-        return thread.name.includes(parsedMessage.data)
+        console.log(thread.name)
+        return thread.name?.includes(parsedMessage.data)
       });
 
       if (thread) {

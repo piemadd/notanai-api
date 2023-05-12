@@ -56,28 +56,13 @@ client.on('messageCreate', (message) => {
 
 //message handling
 wss.on('connection', (ws, req) => {
+  ws.uuid = uuidv4();
+  ws.threadChannelID = null;
 
-  if (req.headers['uuid']) {
-    ws.uuid = req.headers['uuid'];
-
-    client.channels.cache.get(messageChannel).threads.fetchArchived().then((threads) => {
-      threads.forEach((thread) => {
-        if (thread.name.includes(ws.uuid)) {
-          ws.threadChannelID = thread.id;
-
-          client.channels.cache.get(ws.threadChannelID).send('Client reconnected')
-        }
-      })
-    })
-  } else {
-    ws.uuid = uuidv4();
-    ws.threadChannelID = null;
-
-    ws.send(JSON.stringify({
-      type: 'uuid',
-      data: ws.uuid,
-    }));
-  }
+  ws.send(JSON.stringify({
+    type: 'uuid',
+    data: ws.uuid,
+  }));
 
   console.log('Client connected');
   ws.on('error', console.error);
@@ -95,44 +80,65 @@ wss.on('connection', (ws, req) => {
     const parsedMessage = JSON.parse(message);
     console.log(`Received message => ${parsedMessage.content}`)
 
-    fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        secret: process.env.CLOUDFLARE_SECRET,
-        response: parsedMessage.token,
+    if (parsedMessage.type && parsedMessage.type === 'uuid') {
+      //given uuid, look for thread with uuid in name
+      const thread = await client.channels.cache.get(messageChannel).threads.cached.find((thread) => thread.name.includes(parsedMessage.data));
+
+      if (thread) {
+        ws.threadChannelID = thread.id;
+        ws.uuid = parsedMessage.data;
+      } else {
+        client.channels.cache.get(messageChannel).threads.create({
+          name: `Message from ${ws.uuid}`,
+          message: 'Thread created for non existent UUID',
+          autoArchiveDuration: 60,
+        })
+
+        ws.send(JSON.stringify({
+          type: 'error',
+          data: 'Thread not found, fuck it we ball tho'
+        }))
+      }
+    } else {
+      fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          secret: process.env.CLOUDFLARE_SECRET,
+          response: parsedMessage.token,
+        })
       })
-    })
-      .then(res => res.json())
-      .then(json => {
-        if (!json.success) {
-          console.log('Invalid captcha token')
-          ws.send(JSON.stringify({
-            type: 'error',
-            data: 'Invalid captcha token, reload and try again'
-          }))
-          return;
-        }
+        .then(res => res.json())
+        .then(json => {
+          if (!json.success) {
+            console.log('Invalid captcha token')
+            ws.send(JSON.stringify({
+              type: 'error',
+              data: 'Invalid captcha token, reload and try again'
+            }))
+            return;
+          }
 
-        if (!ws.threadChannelID) {
-          console.log('No thread channel ID')
-          client.channels.cache.get(messageChannel).threads.create({
-            name: `Message from ${ws.uuid}`,
-            message: parsedMessage.content.slice(0, 1000),
-            autoArchiveDuration: 60,
-          })
-            .then((thread) => {
-              ws.threadChannelID = thread.id;
-
-              thread.send(`Client info: \n\t- IP: ${req.headers['cf-connecting-ip']}\n\t- User Agent: ${req.headers['user-agent']}\n\t- UUID: ${ws.uuid}\n\t- Country of Origin: ${req.headers['cf-ipcountry']}`)
+          if (!ws.threadChannelID) {
+            console.log('No thread channel ID')
+            client.channels.cache.get(messageChannel).threads.create({
+              name: `Message from ${ws.uuid}`,
+              message: parsedMessage.content.slice(0, 1000),
+              autoArchiveDuration: 60,
             })
-        } else {
-          console.log('Thread channel ID exists')
-          client.channels.cache.get(ws.threadChannelID).send(parsedMessage.content.slice(0, 1000))
-        }
-      })
+              .then((thread) => {
+                ws.threadChannelID = thread.id;
+
+                thread.send(`Client info: \n\t- IP: ${req.headers['cf-connecting-ip']}\n\t- User Agent: ${req.headers['user-agent']}\n\t- UUID: ${ws.uuid}\n\t- Country of Origin: ${req.headers['cf-ipcountry']}`)
+              })
+          } else {
+            console.log('Thread channel ID exists')
+            client.channels.cache.get(ws.threadChannelID).send(parsedMessage.content.slice(0, 1000))
+          }
+        })
+    }
   });
 });
 

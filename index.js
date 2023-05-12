@@ -86,7 +86,7 @@ wss.on('connection', (ws, req) => {
       //given uuid, look for thread with uuid in name
       const regularThreads = await client.channels.cache.get(messageChannel).threads.fetchActive();
       const archivedThreads = await client.channels.cache.get(messageChannel).threads.fetchArchived();
-      const threads = regularThreads.concat(archivedThreads);
+      const threads = [...regularThreads.values(), ...archivedThreads.values()];
 
       const thread = await threads.find((thread) => {
         console.log(thread.name)

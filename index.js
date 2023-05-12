@@ -99,10 +99,13 @@ wss.on('connection', (ws, req) => {
         thread.send('----------------\n**Client reconnected to thread**\n----------------')
         thread.setArchived(false);
       } else {
+        /*
         ws.send(JSON.stringify({
           type: 'error',
           data: 'Your thread is either too old to resume or couldn\'t be found, sowwy uwu'
         }))
+        */
+        ws.uuid = parsedMessage.data;
       }
     } else {
       fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {

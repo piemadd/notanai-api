@@ -86,7 +86,7 @@ wss.on('connection', (ws, req) => {
       //given uuid, look for thread with uuid in name
       const regularThreads = await client.channels.cache.get(messageChannel).threads.fetchActive();
       const archivedThreads = await client.channels.cache.get(messageChannel).threads.fetchArchived();
-      const threads = [...regularThreads.values(), ...archivedThreads.values()];
+      const threads = [...Array.from(regularThreads.threads), ...Array.from(archivedThreads.threads)];
 
       const thread = await threads.find((thread) => {
         console.log(thread.name)
@@ -102,7 +102,7 @@ wss.on('connection', (ws, req) => {
       } else {
         ws.send(JSON.stringify({
           type: 'error',
-          data: 'Thread not found, sowwy uwu'
+          data: 'Your thread is either too old to resume or couldn\'t be found, sowwy uwu'
         }))
       }
     } else {

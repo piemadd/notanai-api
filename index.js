@@ -1,5 +1,5 @@
-const express = require('express');
-const WebSocketServer = require('ws');
+const { Server } = require("socket.io");
+
 const discord = require('discord.js');
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
@@ -7,10 +7,16 @@ const { profanity } = require("super-profanity");
 
 require('dotenv').config();
 
-const messageChannel = '1105988689026367518';
+const messageChannel = '1178991793052864522';
 let messageChannelObject = null;
 
-const wss = new WebSocketServer.Server({ port: 3001 });
+const io = new Server({
+  cors: {
+    origin: "http://localhost:3000"
+  }
+});
+
+//const sockets = new WebSocketServer.Server({ port: 3001 });
 const client = new discord.Client({
   intents: [
     discord.GatewayIntentBits.Guilds,
@@ -22,9 +28,11 @@ const client = new discord.Client({
   ],
 });
 
-wss.on('listening', () => {
+/*
+sockets.on('listening', () => {
   console.log('Listening on port 3001')
 })
+*/
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -33,19 +41,19 @@ client.on('ready', () => {
 client.on('messageCreate', (message) => {
   if (message.author.id === client.user.id) return;
 
-  wss.clients.forEach((ws) => {
-    if (ws.threadChannelID === message.channel.id) {
+  io.sockets.sockets.forEach((socket) => {
+    if (socket.threadChannelID === message.channel.id) {
       console.log('sending response to client')
 
       if (message.content.length > 0) {
-        ws.send(JSON.stringify({
+        socket.send(JSON.stringify({
           'type': 'message',
           'data': message.content,
         }));
       }
 
       Array.from(message.attachments.values()).forEach((attachment) => {
-        ws.send(JSON.stringify({
+        socket.send(JSON.stringify({
           'type': 'attachment',
           'data': attachment.url,
         }));
@@ -55,20 +63,20 @@ client.on('messageCreate', (message) => {
 });
 
 //message handling
-wss.on('connection', (ws, req) => {
-  ws.uuid = uuidv4();
-  ws.threadChannelID = null;
+io.on("connection", (socket) => {
+  socket.uuid = uuidv4();
+  socket.threadChannelID = null;
 
-  ws.send(JSON.stringify({
+  socket.send(JSON.stringify({
     type: 'uuid',
-    data: ws.uuid,
+    data: socket.uuid,
   }));
 
   console.log('Client connected');
-  ws.on('error', console.error);
-  ws.on('close', () => {
+  socket.on('error', console.error);
+  socket.on('close', () => {
     console.log('----------------\n**Client disconnected**\n----------------')
-    const thread = client.channels.cache.get(ws.threadChannelID)
+    const thread = client.channels.cache.get(socket.threadChannelID)
     //if (thread) thread.delete();
     if (thread) {
       thread.send('----------------\n**Client disconnected**\n----------------');
@@ -76,7 +84,7 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('message', async (message) => {
+  socket.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
     console.log(`Received message => ${message}`)
     console.log(`Message type: ${parsedMessage.type}`)
@@ -93,19 +101,19 @@ wss.on('connection', (ws, req) => {
       const thread = archivedThread ?? regularThread;
 
       if (thread) {
-        ws.threadChannelID = thread.id;
-        ws.uuid = parsedMessage.data;
+        socket.threadChannelID = thread.id;
+        socket.uuid = parsedMessage.data;
         console.log(`Thread found, sending message to ${thread.id}`)
         thread.send('----------------\n**Client reconnected to thread**\n----------------')
         thread.setArchived(false);
       } else {
         /*
-        ws.send(JSON.stringify({
+        socket.send(JSON.stringify({
           type: 'error',
           data: 'Your thread is either too old to resume or couldn\'t be found, sowwy uwu'
         }))
         */
-        ws.uuid = parsedMessage.data;
+        socket.uuid = parsedMessage.data;
       }
     } else {
       fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -122,36 +130,44 @@ wss.on('connection', (ws, req) => {
         .then(json => {
           if (!json.success) {
             console.log('Invalid captcha token')
-            ws.send(JSON.stringify({
+            socket.send(JSON.stringify({
               type: 'error',
               data: 'Invalid captcha token, reload and try again'
             }))
             return;
           }
 
-          if (!ws.threadChannelID) {
+          if (!socket.threadChannelID) {
             console.log('No thread channel ID')
             client.channels.cache.get(messageChannel).threads.create({
-              name: `Message from ${ws.uuid}`,
+              name: `Message from ${socket.uuid}`,
               message: parsedMessage.content.slice(0, 1000),
               autoArchiveDuration: 60,
             })
               .then((thread) => {
-                ws.threadChannelID = thread.id;
+                socket.threadChannelID = thread.id;
 
-                thread.send(`Client info: \n\t- IP: ${req.headers['cf-connecting-ip']}\n\t- User Agent: ${req.headers['user-agent']}\n\t- UUID: ${ws.uuid}\n\t- Country of Origin: ${req.headers['cf-ipcountry']}`)
+                thread.send(`Client info: \n\t- IP: ${socket.handshake.headers['cf-connecting-ip']}\n\t- User Agent: ${socket.handshake.headers['user-agent']}\n\t- UUID: ${socket.uuid}\n\t- Country of Origin: ${socket.handshake.headers['cf-ipcountry']}`)
               })
           } else {
             console.log('Thread channel ID exists')
-            client.channels.cache.get(ws.threadChannelID).send(parsedMessage.content.slice(0, 1000))
+            client.channels.cache.get(socket.threadChannelID).send(parsedMessage.content.slice(0, 1000))
           }
         })
     }
   });
 });
 
-wss.on('close', () => {
+/*
+sockets.on('close', () => {
   clearInterval(interval);
 });
+*/
 
+//start discord bot
+console.log('Starting discord bot')
 client.login(process.env.DISCORD_TOKEN);
+
+//start web server
+console.log('Starting socket server')
+io.listen(3001);

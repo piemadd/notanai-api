@@ -14,6 +14,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "node-fetch": "^2.6.7",
+    "socket.io": "^4.7.2",
     "super-profanity": "^1.1.3",
     "uuid": "^9.0.0",
     "ws": "^8.13.0"

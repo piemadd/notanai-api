@@ -12,7 +12,7 @@ let messageChannelObject = null;
 
 const io = new Server({
   cors: {
-    origin: "*"
+    origin: ['localhost:3000', 'http://localhost:3000', 'https://notanai.co']
   }
 });
 

@@ -170,4 +170,4 @@ client.login(process.env.DISCORD_TOKEN);
 
 //start web server
 console.log('Starting socket server')
-io.listen(3001);
+io.listen(443);
